@@ -1,0 +1,5 @@
+neo4j==5.26.0
+pytest==8.3.4
+requests>=2.31.0
+langgraph>=0.2.0
+hypothesis>=6.100.0

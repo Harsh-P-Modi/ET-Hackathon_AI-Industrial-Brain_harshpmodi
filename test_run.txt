@@ -1,0 +1,12 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.2, pytest-8.3.4, pluggy-1.6.0
+rootdir: C:\Users\harsh\Desktop\ET-Hackathon_AI-Industrial-Brain_harshpmodi
+plugins: anyio-4.10.0
+collected 46 items
+
+tests\unit\adapters\test_classify_route_keywords.py .................    [ 36%]
+tests\unit\adapters\test_classify_route_llm_fallback.py ..............   [ 67%]
+tests\unit\adapters\test_embed.py .........                              [ 86%]
+tests\unit\adapters\test_serialize_context.py ......                     [100%]
+
+============================= 46 passed in 8.75s ==============================
