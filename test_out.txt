@@ -1,9 +1,0 @@
-ssssss.................................................................. [ 97%]
-..                                                                       [100%]
-============================== warnings summary ===============================
-..\..\AppData\Local\Programs\Python\Python313\Lib\site-packages\neo4j\_sync\driver.py:549
-  C:\Users\harsh\AppData\Local\Programs\Python\Python313\Lib\site-packages\neo4j\_sync\driver.py:549: DeprecationWarning: Relying on Driver's destructor to close the session is deprecated. Please make sure to close the session. Use it as a context (`with` statement) or make sure to call `.close()` explicitly. Future versions of the driver will not close drivers automatically.
-    _deprecation_warn(
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-68 passed, 6 skipped, 1 warning in 13.93s

@@ -79,3 +79,24 @@ NEO4J_PASSWORD: str = _neo4j_password or ""
 OLLAMA_HOST: str = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL: str = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b-instruct")
 OLLAMA_EMBED_MODEL: str = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+
+# ---------------------------------------------------------------------------
+# Gemini Vision OCR Settings
+# ---------------------------------------------------------------------------
+
+_gemini_api_key = os.environ.get("GEMINI_API_KEY")
+if _gemini_api_key is None and ENVIRONMENT != "test":
+    raise RuntimeError(
+        "GEMINI_API_KEY environment variable is required. "
+        "Set it in your .env file or export it before running the application."
+    )
+GEMINI_API_KEY: str = _gemini_api_key or ""
+
+GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+# ---------------------------------------------------------------------------
+# FastAPI Settings
+# ---------------------------------------------------------------------------
+
+API_HOST: str = os.environ.get("API_HOST", "0.0.0.0")
+API_PORT: int = int(os.environ.get("API_PORT", "8000"))
