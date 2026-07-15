@@ -19,22 +19,14 @@ from src.config import (
 )
 from src.adapters.outbound.neo4j_storage_adapter import Neo4jUnifiedStorageAdapter
 from src.adapters.outbound.ollama_llm_adapter import LangGraphOrchestratorAdapter
+from src.adapters.outbound.vision_ocr_adapter import VisionOCRAdapter
+from src.adapters.inbound.batch_uploader_adapter import BatchFileUploaderAdapter
 from src.adapters.inbound.fastapi_adapter import FastAPIAdapter
 from src.domain.entities import Citation, RouteType, SynthesizedResponse
 from src.domain.services import HybridContextFuser
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# ─── Stub until Spec 06 (BatchFileUploaderAdapter) lands ─────────────────────
-
-
-class StubDocumentIngestionPort:
-    """Placeholder ingestion port — accepts calls without doing real work."""
-
-    def ingest(self, raw_bytes: bytes, filename: str) -> None:
-        logger.info("StubIngestion: received '%s' (%d bytes) — no-op", filename, len(raw_bytes))
 
 
 # ─── Query Service Wrapper ───────────────────────────────────────────────────
@@ -141,11 +133,16 @@ def ollama_ping() -> bool:
         return False
 
 
+# ─── Ingestion Adapter ────────────────────────────────────────────────────────
+
+parser = VisionOCRAdapter()
+ingestion_adapter = BatchFileUploaderAdapter(parser=parser, llm=llm_adapter, storage=storage_adapter)
+
 # ─── Inbound Adapter ─────────────────────────────────────────────────────────
 
 adapter = FastAPIAdapter(
     query_service=query_service,
-    ingestion_service=StubDocumentIngestionPort(),
+    ingestion_service=ingestion_adapter,
     vector_store=storage_adapter,
     graph_store=storage_adapter,
     llm_inference=llm_adapter,

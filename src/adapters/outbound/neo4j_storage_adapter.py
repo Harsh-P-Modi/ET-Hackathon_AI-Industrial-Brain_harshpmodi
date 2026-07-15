@@ -207,3 +207,26 @@ class Neo4jUnifiedStorageAdapter:
         with self._driver.session() as session:
             session.run(query, parameters={"from_id": from_id, "to_id": to_id})
         logger.debug("Upserted relationship %s -[%s]-> %s", from_id, rel_type, to_id)
+
+    def upsert_community(self, community_id: str, summary: str, member_equipment_ids: list[str]) -> None:
+        """Upsert a Community node and BELONGS_TO relationships. Idempotent via MERGE."""
+        community_query = (
+            "MERGE (c:Community {community_id: $community_id}) "
+            "SET c.summary = $summary"
+        )
+        relationship_query = (
+            "MATCH (e:Equipment {equipment_id: $equipment_id}) "
+            "MATCH (c:Community {community_id: $community_id}) "
+            "MERGE (e)-[:BELONGS_TO]->(c)"
+        )
+        with self._driver.session() as session:
+            session.run(community_query, parameters={
+                "community_id": community_id,
+                "summary": summary,
+            })
+            for eq_id in member_equipment_ids:
+                session.run(relationship_query, parameters={
+                    "equipment_id": eq_id,
+                    "community_id": community_id,
+                })
+        logger.debug("Upserted community %s with %d members", community_id, len(member_equipment_ids))
