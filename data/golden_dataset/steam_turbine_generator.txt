@@ -1,0 +1,64 @@
+STEAM TURBINE GENERATOR — OPERATING PROCEDURE
+Document: STG-OP-002 Rev 3
+Equipment: STG-101 (Condensing Steam Turbine Generator, 25 MW)
+Plant: Central Power Generation
+Date: 2024-02-10
+
+SYSTEM DESCRIPTION:
+STG-101 is a multi-stage condensing steam turbine driving a synchronous generator. It receives superheated HP steam at 85 barg / 520°C and exhausts to a surface condenser at 0.08 bara. The generator produces 11kV power synchronized to the plant grid.
+
+MAJOR EQUIPMENT:
+- STG-101: Steam Turbine (10-stage impulse-reaction, 6000 RPM rated)
+- GEN-101: Synchronous Generator (25 MVA, 11kV, 0.85 PF, hydrogen cooled)
+- COND-101: Surface Condenser (Titanium tubes, CW cooled)
+- CW-P-301: Condenser Cooling Water Pump (8000 GPM)
+- CW-P-302: Standby CW Pump
+- CEP-101: Condensate Extraction Pump (Vertical can-type)
+- CEP-102: Standby Condensate Extraction Pump
+- LO-SYS-101: Lube Oil System (reservoir, AC/DC pumps, cooler, filters)
+- GOV-101: Electro-Hydraulic Governor (Woodward type)
+- TP-101: Turning Gear (electric motor, 5 RPM)
+- VE-101: Vacuum Ejector System (2-stage steam jet)
+
+CONNECTIONS:
+HP Steam Header → GOV-101 (Governor Valve) → STG-101 (Turbine) → COND-101 (Condenser)
+COND-101 → CEP-101 → LP Heaters → Deaerator (BFW-T-201)
+CW Supply → CW-P-301 → COND-101 → CW Return (to Cooling Tower CW-T-301)
+LO-SYS-101 → STG-101 Bearings + GEN-101 Bearings + GOV-101
+VE-101 → COND-101 (maintains vacuum)
+
+STARTUP SEQUENCE:
+1. Verify LO-SYS-101 running, oil pressure > 1.5 barg, oil temp 35-45°C
+2. Start TP-101 (turning gear) — confirm rotation at 5 RPM
+3. Start VE-101 — draw vacuum to < 0.15 bara in COND-101
+4. Start CW-P-301 — confirm CW flow through COND-101
+5. Start CEP-101 — establish condensate level in hotwell
+6. Admit steam slowly via GOV-101 — warm turbine per thermal gradient limits (< 3°C/min casing differential)
+7. Accelerate to rated speed (6000 RPM) — hold for vibration check
+8. Synchronize GEN-101 to grid (match voltage, frequency, phase angle)
+9. Load at < 5 MW/min ramp rate
+
+TRIP CONDITIONS:
+- Overspeed: > 6600 RPM (110%) — mechanical overspeed bolt + electronic trip
+- High vibration: > 100 µm pk-pk at any bearing (VT-101 through VT-106)
+- Low lube oil pressure: < 0.8 barg (PS-101)
+- High bearing temperature: > 105°C on any pad (TT-101 through TT-108)
+- Loss of condenser vacuum: > 0.25 bara (PT-101)
+- Generator electrical fault: Differential protection (87G), overcurrent (51), loss of field (40)
+- Thrust bearing wear: > 0.5 mm axial displacement (AT-101)
+
+PROTECTIVE INTERLOCKS:
+- STG-101 trip → GOV-101 fast close (< 0.3 sec) + extraction NRVs close
+- Loss of CW-P-301 → Start CW-P-302 within 10 sec. If both fail → STG-101 load runback to 50% → trip if no CW in 60 sec.
+- CEP-101 trip → Start CEP-102. Hotwell high level alarm if switchover fails.
+- Loss of LO-SYS-101 AC pump → DC emergency pump auto-starts. Provides 10 min coast-down lubrication.
+
+VIBRATION MONITORING:
+- Shaft proximity probes (eddy current): VT-101/102 (front bearing), VT-103/104 (rear bearing), VT-105/106 (generator bearings)
+- Alarm: 80 µm pk-pk, Trip: 100 µm pk-pk
+- Phase reference: once-per-revolution keyphasor for orbit and polar plot analysis
+
+MAINTENANCE INTERVALS:
+- Minor inspection: Every 2 years (governor valve, trip system, bearing clearances)
+- Major overhaul: Every 6 years (blade inspection, diaphragm clearances, generator rewinding assessment)
+- Online monitoring: Continuous vibration, oil analysis quarterly, thermography monthly

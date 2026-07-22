@@ -1,2 +1,5 @@
 files/
 .kiro/
+.env
+__pycache__/
+*.pyc

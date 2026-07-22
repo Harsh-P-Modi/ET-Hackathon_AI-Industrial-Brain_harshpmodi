@@ -1,0 +1,36 @@
+COOLING WATER SYSTEM — P&ID DIAGRAM EXTRACT
+Document: CWS-PID-001 Rev 3
+Plant: Unit 400 — Ethylene Cracker Auxiliary Systems
+Date: 2024-01-15
+
+EQUIPMENT LIST:
+- CW-P-101: Cooling Water Circulation Pump (Centrifugal, 500 GPM)
+- CW-P-102: Cooling Water Standby Pump (Centrifugal, 500 GPM)
+- CW-E-201: Shell & Tube Heat Exchanger (Duty: 2.5 MW)
+- CW-E-202: Plate Heat Exchanger (Duty: 1.8 MW)
+- CW-T-301: Cooling Tower Basin (Volume: 200 m³)
+- CW-V-401: Expansion Vessel (Pressure rated: 6 barg)
+- CW-FCV-101: Flow Control Valve (4", Pneumatic actuator)
+- CW-TCV-201: Temperature Control Valve (6", Pneumatic actuator)
+- CW-FT-101: Flow Transmitter (Electromagnetic, 4-20mA)
+- CW-TT-201: Temperature Transmitter (RTD Pt100, 4-20mA)
+- CW-PT-301: Pressure Transmitter (Gauge, 4-20mA)
+- CW-LSH-301: Level Switch High (Float type)
+- CW-LSL-301: Level Switch Low (Float type)
+
+CONNECTIONS (PIPING):
+CW-T-301 → CW-P-101 → CW-FCV-101 → CW-E-201 → CW-TCV-201 → CW-T-301
+CW-T-301 → CW-P-102 → CW-FCV-101 (standby line)
+CW-E-201 → CW-E-202 (series operation during peak load)
+CW-V-401 connected to header between CW-P-101 and CW-FCV-101
+
+INSTRUMENTATION NOTES:
+- CW-FT-101 measures flow downstream of CW-P-101, input to DCS for cascade control of CW-FCV-101.
+- CW-TT-201 measures outlet temperature of CW-E-201, controls CW-TCV-201 setpoint.
+- CW-PT-301 monitors system header pressure. High alarm at 5.5 barg triggers CW-P-101 trip.
+- CW-LSH-301 and CW-LSL-301 protect cooling tower basin from overflow and dry-run conditions.
+
+SAFETY NOTES:
+- If CW-P-101 trips on high pressure, CW-P-102 auto-starts within 5 seconds (permissive: CW-LSL-301 not active).
+- Loss of cooling water flow >30 seconds triggers emergency shutdown of downstream process heat exchangers.
+- CW-E-201 must be isolated before maintenance. Block valves XV-201A/B must be closed and locked out.

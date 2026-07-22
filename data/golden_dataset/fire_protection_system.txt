@@ -1,0 +1,53 @@
+FIRE AND GAS PROTECTION SYSTEM — SAFETY MANUAL
+Document: FGS-SM-001 Rev 4
+Plant: Site-Wide Fire Protection
+Classification: Safety Instrumented System (SIL 2)
+Date: 2024-03-01
+
+SYSTEM OVERVIEW:
+The Fire and Gas System (FGS) provides continuous monitoring for combustible gas leaks, toxic gas releases, and fire events across all process units. Upon confirmed detection, the system initiates automatic protective actions including deluge activation, HVAC shutdown, and emergency isolation.
+
+DETECTION EQUIPMENT:
+- GD-101 through GD-120: Catalytic Combustible Gas Detectors (20 units, LEL measurement)
+- GD-201 through GD-208: Infrared Point Gas Detectors (8 units, hydrocarbon-specific)
+- GD-301 through GD-304: Open-Path IR Gas Detectors (4 units, perimeter fence-line)
+- FD-101 through FD-116: UV/IR Flame Detectors (16 units, dual-spectrum)
+- HD-101 through HD-108: Linear Heat Detectors (8 zones, warehouse and cable trays)
+- TD-101 through TD-106: Toxic Gas Detectors (H₂S, 6 units)
+
+SUPPRESSION EQUIPMENT:
+- DV-101 through DV-108: Deluge Valves (8 zones, foam/water)
+- FP-P-101: Jockey Pump (maintains system pressure at 12 barg)
+- FP-P-201: Electric Fire Pump (2500 GPM, diesel backup start)
+- FP-P-202: Diesel Fire Pump (2500 GPM, auto-start on pressure drop)
+- FP-T-301: Foam Concentrate Tank (AFFF 3%, 5000 liters)
+- FP-PR-401: Foam Proportioner (venturi type)
+
+VOTING LOGIC:
+- Gas Detection: 2oo3 voting (any 2 of 3 detectors in a zone confirming > 25% LEL triggers alarm; > 50% LEL triggers executive action)
+- Flame Detection: 1oo2 voting (single confirmed UV/IR detection triggers deluge in affected zone)
+- Heat Detection: 1oo1 (any zone alarm triggers local deluge)
+
+EXECUTIVE ACTIONS:
+Zone 1 (Compressor Area):
+- GD-101/102/103 at > 50% LEL → Close ESD-V-101 (compressor suction isolation), Trip K-501, Activate DV-101
+
+Zone 2 (Tank Farm):
+- FD-105/106 confirmed → Activate DV-103 (tank cooling deluge), Close XV-201/202 (tank isolation valves)
+
+Zone 3 (Loading Area):
+- GD-110/111/112 at > 50% LEL → ESD-V-301 (loading arm isolation), Sound evacuation alarm, Activate DV-105
+
+CONNECTIONS:
+FP-T-301 → FP-P-201 → Fire Water Header → DV-101 through DV-108
+FP-P-101 maintains header pressure → header → all deluge valves
+GD-101/102/103 → FGS Logic Solver → ESD-V-101 + K-501 Trip + DV-101
+FD-105/106 → FGS Logic Solver → DV-103 + XV-201/202
+
+TESTING AND MAINTENANCE:
+- All gas detectors: Monthly bump test, annual calibration with certified reference gas.
+- Flame detectors: Quarterly functional test with IR/UV source. Annual sensitivity verification.
+- Deluge valves: Quarterly trip test (water flow confirmed). Annual full-flow test.
+- Fire pumps: Weekly auto-start test (no-load). Monthly full-load performance test.
+- Logic solver: Annual proof test of all cause-and-effect relationships (SIL verification).
+- Foam system: Annual foam quality test (expansion ratio, drain time).

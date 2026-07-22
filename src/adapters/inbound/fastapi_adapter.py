@@ -19,6 +19,7 @@ class QueryRequest(BaseModel):
     """Request body for POST /query."""
 
     question: str = Field(..., min_length=1)
+    history: list[dict] = Field(default_factory=list, description="Previous Q&A pairs for context")
 
     @field_validator("question")
     @classmethod
@@ -141,7 +142,18 @@ class FastAPIAdapter:
         @self._app.post("/query", response_model=QueryResponse)
         async def query_endpoint(request: QueryRequest) -> QueryResponse:
             try:
-                domain_response = self._query_service.ask(request.question)
+                # Build a contextual query with conversation history
+                question = request.question
+                if request.history:
+                    # Take last 2 exchanges max to keep context manageable
+                    recent = request.history[-4:]  # last 2 Q&A pairs = 4 messages
+                    history_text = "\n".join(
+                        f"{'User' if m.get('role') == 'user' else 'Assistant'}: {m.get('content', '')[:200]}"
+                        for m in recent
+                    )
+                    question = f"[Conversation history:\n{history_text}]\n\nCurrent question: {request.question}"
+
+                domain_response = self._query_service.ask(question)
                 return _map_synthesized_response(domain_response)
             except Exception as exc:
                 logger.exception("Unhandled error in /query: %s", exc)
@@ -153,6 +165,11 @@ class FastAPIAdapter:
             filename = file.filename or "unknown"
             try:
                 self._ingestion_service.ingest(raw_bytes, filename)
+                # Also save file to golden_dataset for persistence
+                from pathlib import Path
+                dataset_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "golden_dataset"
+                dataset_dir.mkdir(parents=True, exist_ok=True)
+                (dataset_dir / filename).write_bytes(raw_bytes)
             except Exception as exc:
                 logger.warning("Ingestion error (non-critical): %s", exc)
             return IngestResponse(status="accepted", filename=filename)
@@ -168,3 +185,59 @@ class FastAPIAdapter:
             except Exception:
                 ollama_ok = False
             return HealthResponse(status="ok", neo4j=neo4j_ok, ollama=ollama_ok)
+
+        @self._app.get("/graph")
+        async def graph_endpoint(equipment_id: str = "", depth: int = 2) -> dict:
+            """Return graph data (nodes + edges) for visualization."""
+            try:
+                from src.adapters.outbound.inmemory_storage_adapter import InMemoryStorageAdapter
+                if isinstance(self._graph_store, InMemoryStorageAdapter):
+                    store = self._graph_store
+                    nodes = []
+                    edges = []
+                    for eid, equip in store._equipment.items():
+                        nodes.append({
+                            "id": eid,
+                            "label": equip.name or eid,
+                            "type": equip.equipment_type,
+                        })
+                    for from_id, rels in store._relationships.items():
+                        for to_id, rel_type in rels:
+                            edges.append({"from": from_id, "to": to_id, "label": rel_type})
+                    return {"nodes": nodes[:100], "edges": edges[:200]}
+                else:
+                    # Neo4j — query all equipment and relationships
+                    from neo4j import GraphDatabase
+                    from src.adapters.outbound.neo4j_storage_adapter import Neo4jUnifiedStorageAdapter
+                    if isinstance(self._graph_store, Neo4jUnifiedStorageAdapter):
+                        adapter = self._graph_store
+                        nodes = []
+                        edges = []
+                        with adapter._driver.session() as session:
+                            # Get equipment nodes
+                            result = session.run(
+                                "MATCH (e:Equipment) RETURN e.equipment_id AS id, "
+                                "e.name AS name, e.equipment_type AS type LIMIT 100"
+                            )
+                            for record in result:
+                                nodes.append({
+                                    "id": record["id"],
+                                    "label": record["name"] or record["id"],
+                                    "type": record["type"] or "equipment",
+                                })
+                            # Get relationships
+                            result = session.run(
+                                "MATCH (a:Equipment)-[r:CONNECTS_TO]->(b:Equipment) "
+                                "RETURN a.equipment_id AS from_id, b.equipment_id AS to_id LIMIT 200"
+                            )
+                            for record in result:
+                                edges.append({
+                                    "from": record["from_id"],
+                                    "to": record["to_id"],
+                                    "label": "CONNECTS_TO",
+                                })
+                        return {"nodes": nodes, "edges": edges}
+                    return {"nodes": [], "edges": []}
+            except Exception as exc:
+                logger.warning("Graph endpoint error: %s", exc)
+                return {"nodes": [], "edges": []}

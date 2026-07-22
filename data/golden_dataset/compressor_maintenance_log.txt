@@ -1,0 +1,55 @@
+MAINTENANCE LOG — RECIPROCATING COMPRESSOR SYSTEM
+Equipment: K-501 (Reciprocating Gas Compressor, 3-stage)
+Location: Unit 200 — Hydrogen Recovery
+Document: ML-K501-2024-Q1
+
+=== EVENT 1 ===
+Date: 2024-01-08
+Work Order: WO-2024-0042
+Type: Preventive Maintenance
+Performed By: J. Martinez (Rotating Equipment Technician)
+Description: Scheduled 6000-hour valve inspection on K-501 Stage 1 suction and discharge valves.
+Findings: 
+- Stage 1 suction valve (SV-501A) showed 15% seat erosion. Replaced with spare.
+- Stage 1 discharge valve (DV-501A) within acceptable limits. No action required.
+- Packing rings on rod seal replaced (normal wear).
+- Lube oil sampled — no metal particles detected.
+Downtime: 8 hours
+Related Equipment: K-501, SV-501A, DV-501A, LO-P-501 (Lube Oil Pump)
+
+=== EVENT 2 ===
+Date: 2024-02-14
+Work Order: WO-2024-0089
+Type: Corrective Maintenance (Unplanned)
+Performed By: R. Patel (Rotating Equipment Technician)
+Description: K-501 tripped on high Stage 2 discharge temperature (TT-502 reading 185°C, alarm at 175°C).
+Root Cause: Intercooler E-502 fouled — reduced heat transfer caused Stage 2 discharge to exceed limits.
+Actions Taken:
+- E-502 isolated and cleaned (hydroblasting). Found calcium carbonate scale buildup.
+- Cooling water quality checked — pH was 8.9 (spec: 7.0-8.5). Water treatment adjusted.
+- K-501 restarted after E-502 CIP. Discharge temp stable at 145°C.
+Downtime: 36 hours (unplanned)
+Related Equipment: K-501, E-502, TT-502, CW-System
+
+=== EVENT 3 ===
+Date: 2024-03-22
+Work Order: WO-2024-0156
+Type: Predictive Maintenance
+Performed By: A. Singh (Vibration Analyst)
+Description: Quarterly vibration analysis on K-501 crankshaft and crosshead bearings.
+Findings:
+- Overall vibration: 4.2 mm/s RMS (alarm: 7.1 mm/s) — within normal range.
+- 1× RPM component dominant as expected for reciprocating machine.
+- No sub-synchronous activity detected.
+- Crosshead pin bearing shows early-stage wear signature (2× component increasing trend).
+Recommendation: Schedule crosshead pin bearing replacement at next planned shutdown (estimated Q3 2024).
+Downtime: 0 hours (online measurement)
+Related Equipment: K-501, Crosshead-501
+
+SYSTEM OVERVIEW:
+K-501 compresses hydrogen-rich gas from 5 barg to 45 barg in 3 stages.
+- Stage 1: 5 → 12 barg (intercooled by E-501)
+- Stage 2: 12 → 28 barg (intercooled by E-502)
+- Stage 3: 28 → 45 barg (aftercooled by E-503)
+Lube oil system: LO-P-501 (main) / LO-P-502 (standby), LO-F-501 (duplex filter), LO-C-501 (cooler)
+Anti-surge protection via recycle valve RV-501 (controlled by DCS compressor surge controller).

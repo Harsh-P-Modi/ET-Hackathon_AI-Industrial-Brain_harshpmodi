@@ -11,12 +11,12 @@ from pathlib import Path
 _project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_project_root))
 
-from neo4j import GraphDatabase  # noqa: E402
-
 from src.config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD  # noqa: E402
 from src.adapters.outbound.neo4j_storage_adapter import Neo4jUnifiedStorageAdapter  # noqa: E402
 from src.adapters.outbound.ollama_llm_adapter import LangGraphOrchestratorAdapter  # noqa: E402
 from src.adapters.outbound.vision_ocr_adapter import VisionOCRAdapter  # noqa: E402
+from src.adapters.outbound.composite_parser_adapter import CompositeParserAdapter  # noqa: E402
+from src.adapters.outbound.inmemory_storage_adapter import InMemoryStorageAdapter  # noqa: E402
 from src.adapters.inbound.batch_uploader_adapter import BatchFileUploaderAdapter  # noqa: E402
 from src.domain.services import HybridContextFuser  # noqa: E402
 
@@ -28,13 +28,32 @@ def main() -> None:
         print(f"ERROR: Golden dataset directory not found: {GOLDEN_DATASET_DIR}", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Connecting to Neo4j at {NEO4J_URI} as '{NEO4J_USER}' ...")
-    driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+    # Try Neo4j, fall back to in-memory
+    driver = None
+    try:
+        from neo4j import GraphDatabase  # noqa: E402
+        print(f"Connecting to Neo4j at {NEO4J_URI} as '{NEO4J_USER}' ...")
+        driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
+        driver.verify_connectivity()
+        storage = Neo4jUnifiedStorageAdapter(driver)
+        print("Connected to Neo4j.")
+    except Exception as exc:
+        print(f"Neo4j unavailable ({exc}) — using in-memory storage.")
+        print("NOTE: Data will be stored in the running FastAPI process instead.")
+        print("      Start the backend with 'uvicorn src.main:app' and upload via Streamlit.\n")
+        storage = InMemoryStorageAdapter()
 
-    storage = Neo4jUnifiedStorageAdapter(driver)
     fuser = HybridContextFuser()
     llm = LangGraphOrchestratorAdapter(vector_store=storage, graph_store=storage, fuser=fuser)
-    parser = VisionOCRAdapter()
+
+    # Use composite parser: .txt files parsed locally, images/PDFs via Gemini
+    try:
+        vision_parser = VisionOCRAdapter()
+    except RuntimeError:
+        print("WARNING: GEMINI_API_KEY not set — only .txt files will be ingested.")
+        vision_parser = None
+
+    parser = CompositeParserAdapter(vision_parser=vision_parser)
     adapter = BatchFileUploaderAdapter(parser=parser, llm=llm, storage=storage)
 
     failures: list[tuple[str, str]] = []
@@ -57,12 +76,16 @@ def main() -> None:
         print(f"\n{len(failures)} file(s) failed:")
         for name, err in failures:
             print(f"  - {name}: {err}")
-        driver.close()
+        if driver:
+            driver.close()
         sys.exit(1)
     else:
         print(f"\nAll files ingested successfully.")
+        if isinstance(storage, InMemoryStorageAdapter):
+            print(f"Storage stats: {storage.stats()}")
 
-    driver.close()
+    if driver:
+        driver.close()
 
 
 if __name__ == "__main__":

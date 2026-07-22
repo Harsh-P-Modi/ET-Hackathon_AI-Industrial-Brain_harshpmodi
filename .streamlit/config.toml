@@ -1,7 +1,9 @@
-# PLACEHOLDER: Replace with final brand colors before jury presentation
 [theme]
-primaryColor = "#4a9eff"
+primaryColor = "#2ecc71"
 backgroundColor = "#0e1117"
-secondaryBackgroundColor = "#1a1f2e"
-textColor = "#fafafa"
+secondaryBackgroundColor = "#161b22"
+textColor = "#e6edf3"
 font = "sans serif"
+
+[server]
+maxUploadSize = 50
