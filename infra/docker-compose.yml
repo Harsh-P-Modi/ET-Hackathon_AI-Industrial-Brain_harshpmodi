@@ -1,0 +1,88 @@
+services:
+  neo4j:
+    image: neo4j:5-community
+    container_name: fixmyplant-neo4j
+    ports:
+      - "7474:7474"   # HTTP browser
+      - "7687:7687"   # Bolt protocol
+    environment:
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-testpassword}
+      - NEO4J_PLUGINS=["apoc"]
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD", "neo4j", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: fixmyplant-ollama
+    # Port 11434 is not published to the host to avoid clashing with a
+    # locally-installed Ollama service. The API container reaches it via
+    # the internal Docker network at http://ollama:11434.
+    expose:
+      - "11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    container_name: fixmyplant-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-local}
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=${NEO4J_USER:-neo4j}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-testpassword}
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b-instruct}
+      - OLLAMA_EMBED_MODEL=${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+  streamlit:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.streamlit
+    container_name: fixmyplant-streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - BACKEND_URL=http://api:8000
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8501/_stcore/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  ollama_data:
