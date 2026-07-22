@@ -1,0 +1,47 @@
+BOILER FEEDWATER SYSTEM — TECHNICAL SPECIFICATION
+Document: BFW-SPEC-003 Rev 2
+Plant: Central Utilities — Steam Generation
+Date: 2023-11-20
+
+SYSTEM DESCRIPTION:
+The boiler feedwater system supplies demineralized water at controlled temperature and pressure to three HP steam boilers (B-101, B-102, B-103). The system maintains continuous supply even during single boiler trip events.
+
+EQUIPMENT:
+- BFW-P-101: Main Boiler Feedwater Pump (Multi-stage centrifugal, 150 m³/h, 85 barg discharge)
+- BFW-P-102: Standby Boiler Feedwater Pump (identical to BFW-P-101)
+- BFW-T-201: Deaerator Tank (Operating: 1.2 barg, 105°C)
+- BFW-E-301: LP Economizer (recovers heat from boiler flue gas)
+- BFW-E-302: HP Economizer (final preheat before steam drum)
+- BFW-V-101: Minimum Flow Recirculation Valve (protects pumps at low load)
+- BFW-FCV-201: Feedwater Flow Control Valve (drum level cascade)
+- DA-V-101: Deaerator Vent Valve (removes dissolved oxygen)
+- CP-P-401: Condensate Polishing Pump
+- CP-IX-401: Mixed Bed Ion Exchange Unit
+
+PROCESS FLOW:
+Condensate Return → CP-P-401 → CP-IX-401 → BFW-T-201 (Deaerator) → BFW-P-101 → BFW-E-301 → BFW-E-302 → Steam Drum (B-101/B-102/B-103)
+
+CONTROL PHILOSOPHY:
+1. Drum Level Control: Three-element control using steam flow (FT-101), feedwater flow (FT-201), and drum level (LT-101). Output drives BFW-FCV-201.
+2. Deaerator Level: Condensate makeup valve MV-201 maintains level in BFW-T-201. Low level alarm triggers makeup from demineralized water tank.
+3. Minimum Flow Protection: When BFW-FCV-201 closes below 30%, BFW-V-101 opens to maintain minimum 40 m³/h through the pump.
+
+WATER QUALITY REQUIREMENTS:
+- Dissolved oxygen: < 7 ppb (maintained by deaeration at 105°C)
+- Conductivity: < 0.1 µS/cm (maintained by CP-IX-401)
+- pH: 9.0 - 9.5 (maintained by ammonia dosing)
+- Silica: < 20 ppb
+- Iron: < 10 ppb
+- Total hardness: < 1 ppb
+
+FAILURE MODES AND EFFECTS:
+1. BFW-P-101 trip → Auto-start BFW-P-102 (permissive: suction pressure > 2 barg). Switchover time < 8 seconds.
+2. Loss of both BFW pumps → Emergency steam dump via PCV-101. Boilers trip on low-low drum level after 45 seconds.
+3. Deaerator pressure loss → Dissolved O₂ rises. Chemistry alarm at > 10 ppb. Manual isolation of affected boiler within 30 minutes.
+4. CP-IX-401 exhaustion → High conductivity alarm. Switchover to standby IX unit. Regeneration cycle: 4 hours.
+
+MAINTENANCE SCHEDULE:
+- BFW-P-101/102: Annual overhaul (bearing replacement, impeller inspection, mechanical seal change)
+- BFW-E-301/302: Biannual tube inspection (eddy current). Clean if fouling factor > 0.0003 m²K/W.
+- CP-IX-401: Resin replacement every 3 years. Regeneration every 72 hours of operation.
+- BFW-T-201: Internal inspection every 4 years (pressure vessel regulation).

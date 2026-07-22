@@ -254,6 +254,14 @@ RETRYABLE_STATUSES = {429, 500, 502, 503, 504}
 class VisionOCRAdapter:
     """Implements DocumentParsingPort using Google Gemini multimodal extraction."""
 
+    # Fallback models in priority order (free tier friendly)
+    FALLBACK_MODELS: tuple[str, ...] = (
+        "gemini-3.6-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash",
+    )
+
     def __init__(self) -> None:
         api_key = os.environ.get("GEMINI_API_KEY", "")
         if not api_key:
@@ -261,7 +269,7 @@ class VisionOCRAdapter:
                 "GEMINI_API_KEY environment variable is required. "
                 "Set it in your .env file or export it before running the application."
             )
-        self._model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        self._model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
         self._client = genai.Client(api_key=api_key)
         logger.info("VisionOCRAdapter initialized with model=%s", self._model)
 
@@ -270,15 +278,40 @@ class VisionOCRAdapter:
     ) -> _ExtractionSchema | None:
         """Call Gemini API with exponential backoff retry logic.
 
-        Returns validated _ExtractionSchema or None if page should be skipped.
+        Tries the configured model first, then falls back to alternative models
+        on 404 or rate limit errors. Returns validated _ExtractionSchema or
+        None if page should be skipped.
         Raises VisionOCRAdapterError for permanent errors (401, 403).
         """
         prompt_text = _build_extraction_prompt()
 
+        # Build model list: configured model first, then fallbacks
+        models_to_try = [self._model] + [
+            m for m in self.FALLBACK_MODELS if m != self._model
+        ]
+
+        for model in models_to_try:
+            result = self._try_model(
+                model, image_bytes, mime_type, page, filename, prompt_text
+            )
+            if result is not None:
+                return result
+            # If result is None, try next model
+
+        logger.error(
+            "All models exhausted — filename=%s page=%d", filename, page
+        )
+        return None
+
+    def _try_model(
+        self, model: str, image_bytes: bytes, mime_type: str,
+        page: int, filename: str, prompt_text: str
+    ) -> _ExtractionSchema | None:
+        """Try a single model with retries. Returns None to signal 'try next model'."""
         for attempt in range(MAX_RETRIES):
             try:
                 response = self._client.models.generate_content(
-                    model=self._model,
+                    model=model,
                     contents=[
                         prompt_text,
                         types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
@@ -294,10 +327,9 @@ class VisionOCRAdapter:
                     result = _ExtractionSchema.model_validate_json(response.text)
                     return result
                 except ValidationError as ve:
-                    # Validation failure: retry on next loop iteration
                     logger.warning(
-                        "Pydantic validation failed — filename=%s page=%d attempt=%d detail=%s",
-                        filename, page, attempt + 1, str(ve)[:200],
+                        "Pydantic validation failed — model=%s filename=%s page=%d attempt=%d detail=%s",
+                        model, filename, page, attempt + 1, str(ve)[:200],
                     )
                     if attempt < MAX_RETRIES - 1:
                         continue
@@ -313,18 +345,26 @@ class VisionOCRAdapter:
                         page=page,
                     )
 
+                # Model not available or rate limited — try next model
+                if any(code in error_msg for code in ("404", "429", "503")):
+                    logger.warning(
+                        "Model %s unavailable/rate-limited — trying next. error=%s",
+                        model, error_msg[:100],
+                    )
+                    return None  # Signal to try next model
+
                 # Transient error — retry with backoff
                 if attempt < MAX_RETRIES - 1:
                     delay = BASE_DELAY_SECONDS * (BACKOFF_MULTIPLIER ** attempt)
                     logger.warning(
-                        "Transient error, retrying — filename=%s page=%d attempt=%d delay=%.1fs error=%s",
-                        filename, page, attempt + 1, delay, error_msg[:200],
+                        "Transient error, retrying — model=%s filename=%s page=%d attempt=%d delay=%.1fs error=%s",
+                        model, filename, page, attempt + 1, delay, error_msg[:200],
                     )
                     time.sleep(delay)
                 else:
                     logger.error(
-                        "All retries exhausted — filename=%s page=%d error=%s",
-                        filename, page, error_msg[:200],
+                        "All retries exhausted — model=%s filename=%s page=%d error=%s",
+                        model, filename, page, error_msg[:200],
                     )
                     return None
 

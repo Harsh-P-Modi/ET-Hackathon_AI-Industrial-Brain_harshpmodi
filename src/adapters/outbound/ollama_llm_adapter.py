@@ -167,7 +167,7 @@ class LangGraphOrchestratorAdapter:
         }
 
         try:
-            response = requests.post(endpoint, json=payload, timeout=30)
+            response = requests.post(endpoint, json=payload, timeout=120)
             response.raise_for_status()
             outer = response.json()
             inner_json = json.loads(outer["response"])
@@ -210,25 +210,26 @@ class LangGraphOrchestratorAdapter:
         """Serialize context items into a tagged text block for the LLM prompt.
 
         Each item is rendered with a type-specific source tag and separated by
-        a blank line. Domain identifiers are preserved in the output for
-        downstream citation extraction.
+        a blank line. Uses source document names for readable citations.
         """
         parts: list[str] = []
         for item in items:
             if isinstance(item, DocumentChunk):
+                # Use source_document for citation (human-readable)
+                source_label = item.source_document.replace(".txt", "").replace("_", " ").title()
                 parts.append(
-                    f"[chunk_{item.chunk_id}] (from: {item.source_document})\n"
+                    f"[Source: {source_label}]\n"
                     f"{item.text}"
                 )
             elif isinstance(item, EquipmentNode):
                 connects = ", ".join(item.connects_to)
                 parts.append(
-                    f"[equip_{item.equipment_id}] (type: {item.equipment_type})\n"
-                    f"Name: {item.name}, Connects to: {connects}"
+                    f"[Equipment: {item.name}] (type: {item.equipment_type})\n"
+                    f"Connects to: {connects}"
                 )
             elif isinstance(item, MaintenanceEvent):
                 parts.append(
-                    f"[event_{item.event_id}] (equipment: {item.equipment_id}, "
+                    f"[Event: {item.event_id}] (equipment: {item.equipment_id}, "
                     f"date: {item.timestamp.isoformat()})\n"
                     f"{item.description}"
                 )
@@ -251,16 +252,21 @@ class LangGraphOrchestratorAdapter:
         """
         serialized_context = self._serialize_context(context)
 
-        # Build system prompt — always enforce grounded-only instruction.
+        # Build system prompt — strict grounding with exact quoting
         system_prompt = (
-            "Answer ONLY from the provided context. "
-            "Do not use your own training data."
+            "You are an industrial plant maintenance expert. "
+            "Answer ONLY from the provided context. Do NOT use your own training data. "
+            "When citing numerical values, thresholds, or time durations, quote them EXACTLY as they appear in the context — "
+            "do not paraphrase, round, or reword numbers or units. "
+            "If the context says '> 30 seconds', say '> 30 seconds', not 'below 30 seconds'. "
+            "List specific affected equipment by their tag IDs when available. "
+            "If the context does not contain enough information to fully answer, say so explicitly."
         )
         # When multiple context items exist, add citation instruction.
         if len(context) >= 2:
             system_prompt += (
-                " Cite sources inline using [chunk_XXX], [equip_XXX], "
-                "or [event_XXX] tags."
+                " Cite sources at the end of relevant statements using the "
+                "[Source: ...] tags exactly as they appear in the context."
             )
 
         user_prompt = f"Context:\n{serialized_context}\n\nQuestion: {query}"
@@ -274,7 +280,7 @@ class LangGraphOrchestratorAdapter:
         }
 
         try:
-            response = requests.post(endpoint, json=payload, timeout=60)
+            response = requests.post(endpoint, json=payload, timeout=300)
             response.raise_for_status()
         except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as exc:
             raise OllamaAdapterError(
@@ -328,7 +334,7 @@ class LangGraphOrchestratorAdapter:
         payload = {"model": self._embed_model, "prompt": text}
 
         try:
-            response = requests.post(endpoint, json=payload, timeout=30)
+            response = requests.post(endpoint, json=payload, timeout=120)
             response.raise_for_status()
         except (requests.ConnectionError, requests.Timeout, requests.HTTPError) as exc:
             raise OllamaAdapterError(
@@ -372,10 +378,10 @@ class LangGraphOrchestratorAdapter:
     def _vector_retrieval_tool(self, query: str) -> list[DocumentChunk]:
         """Internal tool: embed query then semantic search."""
         embedding = self.embed(query)
-        return self._vector_store.semantic_search(embedding, top_k=10)
+        return self._vector_store.semantic_search(embedding, top_k=8)
 
     def _graph_cypher_tool(
-        self, equipment_id: str, depth: int = 2
+        self, equipment_id: str, depth: int = 3
     ) -> list[EquipmentNode]:
         """Internal tool: graph neighbor traversal."""
         return self._graph_store.get_neighbors(equipment_id, depth)
@@ -397,20 +403,24 @@ class LangGraphOrchestratorAdapter:
     def _graph_retrieve_node(self, state: OrchestratorState) -> dict:
         """Perform graph retrieval and store results in state.
 
-        Extracts equipment IDs from the query using a simple regex pattern,
-        then calls graph traversal for each found ID. If no equipment IDs
-        are found, returns an empty list.
+        Extracts equipment IDs from the query using regex patterns that match
+        industrial naming conventions (e.g., CW-P-101, STG-101, BFW-T-201).
+        Tries both the raw ID and a slugified version to match stored format.
         """
         query = state["query"]
-        equipment_ids = re.findall(r"\b[A-Za-z]+\-[0-9]+\b", query)
+        # Match multi-segment equipment IDs: CW-P-101, BFW-T-201, STG-101, K-501, etc.
+        equipment_ids = re.findall(r"\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+\b", query)
 
         all_results: list[Union[EquipmentNode, MaintenanceEvent]] = []
         for eq_id in equipment_ids:
+            # Try raw ID first
             neighbors = self._graph_cypher_tool(eq_id, depth=2)
+            if not neighbors:
+                # Try slugified version (lowercase + _c0 suffix used by text parser)
+                slugified = eq_id.lower() + "_c0"
+                neighbors = self._graph_cypher_tool(slugified, depth=2)
             all_results.extend(neighbors)
 
-        # If no equipment IDs found, attempt a broad search with a default ID
-        # (graceful degradation — return empty if nothing to search)
         return {"graph_results": all_results}
 
     def _fuse_node(self, state: OrchestratorState) -> dict:
@@ -435,24 +445,19 @@ class LangGraphOrchestratorAdapter:
     def _route_after_classify(self, state: OrchestratorState) -> str:
         """Conditional routing: returns the next node name based on route.
 
-        - VECTOR or HYBRID → "vector_retrieve" (HYBRID continues to graph after)
-        - GRAPH_LOCAL or GRAPH_GLOBAL → "graph_retrieve"
+        All routes start with vector_retrieve to ensure text context is available.
+        HYBRID and GRAPH routes then continue to graph_retrieve.
         """
-        route = state["route"]
-        if route in ("vector_search", "hybrid_fusion"):
-            return "vector_retrieve"
-        elif route in ("graph_local_search", "graph_global_search"):
-            return "graph_retrieve"
-        # Fallback to vector_retrieve for any unexpected route value
+        # Always start with vector retrieval to enrich context
         return "vector_retrieve"
 
     def _route_after_vector_retrieve(self, state: OrchestratorState) -> str:
         """Conditional routing after vector retrieval.
 
-        If HYBRID, continue to graph_retrieve before fusing.
-        Otherwise, go directly to fuse.
+        HYBRID, GRAPH_LOCAL, GRAPH_GLOBAL → continue to graph_retrieve.
+        VECTOR → go directly to fuse.
         """
-        if state["route"] == "hybrid_fusion":
+        if state["route"] in ("hybrid_fusion", "graph_local_search", "graph_global_search"):
             return "graph_retrieve"
         return "fuse"
 
@@ -476,13 +481,12 @@ class LangGraphOrchestratorAdapter:
         # Entry point
         graph.set_entry_point("classify")
 
-        # Conditional edges after classify
+        # Conditional edges after classify — all routes go through vector_retrieve
         graph.add_conditional_edges(
             "classify",
             self._route_after_classify,
             {
                 "vector_retrieve": "vector_retrieve",
-                "graph_retrieve": "graph_retrieve",
             },
         )
 

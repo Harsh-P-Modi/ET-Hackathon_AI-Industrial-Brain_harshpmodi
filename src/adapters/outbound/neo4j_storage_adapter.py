@@ -200,8 +200,8 @@ class Neo4jUnifiedStorageAdapter:
             )
 
         query = (
-            f"MATCH (a:Equipment {{equipment_id: $from_id}}) "
-            f"MATCH (b:Equipment {{equipment_id: $to_id}}) "
+            f"MERGE (a:Equipment {{equipment_id: $from_id}}) "
+            f"MERGE (b:Equipment {{equipment_id: $to_id}}) "
             f"MERGE (a)-[:{rel_type}]->(b)"
         )
         with self._driver.session() as session:

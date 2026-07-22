@@ -86,13 +86,14 @@ OLLAMA_EMBED_MODEL: str = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text
 
 _gemini_api_key = os.environ.get("GEMINI_API_KEY")
 if _gemini_api_key is None and ENVIRONMENT != "test":
-    raise RuntimeError(
-        "GEMINI_API_KEY environment variable is required. "
-        "Set it in your .env file or export it before running the application."
+    import logging as _logging
+    _logging.getLogger(__name__).warning(
+        "GEMINI_API_KEY not set — Vision OCR will be disabled. "
+        "Only text file ingestion will work. Set it in .env if you need PDF/image parsing."
     )
 GEMINI_API_KEY: str = _gemini_api_key or ""
 
-GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL: str = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 
 # ---------------------------------------------------------------------------
 # FastAPI Settings
